@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF Download Test</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+</head>
+<body>
+    <h1>PDF Download Test</h1>
+    <button onclick="testPDFDownload()">Test PDF Download</button>
+    
+    <script>
+        function testPDFDownload() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            
+            // Add some test content
+            doc.setFontSize(20);
+            doc.text('Test PDF Generation', 20, 20);
+            
+            doc.setFontSize(12);
+            doc.text('This is a test of the PDF generation functionality.', 20, 40);
+            doc.text('The chatbot will generate similar PDFs with chat conversations.', 20, 50);
+            
+            // Save the PDF
+            doc.save('test-pdf-download.pdf');
+        }
+    </script>
+</body>
+</html> 

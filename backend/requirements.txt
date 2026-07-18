@@ -1,0 +1,29 @@
+# === Embeddings (local, ONNX — no PyTorch) ===
+# fastembed runs all-MiniLM-L6-v2 locally via onnxruntime. Small memory
+# footprint (fits modest cloud instances), 384-dim vectors, no API tokens.
+# Model is downloaded & cached once on first run, then served from disk.
+fastembed==0.3.6
+numpy==1.26.4
+
+# === Text chunking ===
+langchain==0.1.15
+langchain-text-splitters==0.0.2
+
+# === Document parsing ===
+PyMuPDF==1.23.21      # (fitz)
+python-docx==1.1.0
+
+# === MongoDB driver ===
+pymongo==4.5.0
+
+# === HTTP (Groq API calls) ===
+requests==2.31.0
+
+# === Config ===
+python-dotenv==1.0.1
+psutil==5.9.8
+
+# === Backend API ===
+flask==2.3.3
+flask-cors==4.0.0
+waitress==3.0.0
