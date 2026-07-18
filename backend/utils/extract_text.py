@@ -65,16 +65,6 @@ def extract_from_pdf(file_bytes):
                 
         if not text.strip():
             logger.error("PDF contains no extractable text (may be a scanned document or image-based PDF)")
-            # Try OCR as last resort
-            try:
-                logger.info("Attempting OCR as fallback...")
-                pix = page.get_pixmap()
-                # This is a placeholder - you'd need to integrate with an OCR library like Tesseract
-                # text = pytesseract.image_to_string(pix)
-                logger.warning("OCR is not currently implemented. Please install pytesseract and poppler for OCR support.")
-            except Exception as ocr_error:
-                logger.error(f"OCR attempt failed: {str(ocr_error)}")
-                
             raise ValueError("PDF contains no extractable text (may be a scanned document or image-based PDF)")
             
         return text

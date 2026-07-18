@@ -29,14 +29,14 @@ def get_similar_chunks(query, document_ids, top_k=3):
         if not matching_docs:
             return []
 
-        # 🔧 UPDATED: Set much lower thresholds to catch resume/short text matches
+        # Shorter queries carry less signal, so use a lower similarity bar
         query_words = len(query.split())
         if query_words < 5:
-            similarity_threshold = 0.25  # Lowered from 0.45 for short queries
+            similarity_threshold = 0.25
         elif query_words < 10:
-            similarity_threshold = 0.22  # Lowered from 0.40
+            similarity_threshold = 0.22
         else:
-            similarity_threshold = 0.20  # Lowered from 0.35
+            similarity_threshold = 0.20
 
         print(f"🎯 Using similarity threshold: {similarity_threshold:.2f} (query length: {query_words} words)")
 
@@ -44,12 +44,13 @@ def get_similar_chunks(query, document_ids, top_k=3):
         all_chunks = []
         for doc in matching_docs:
             if 'chunks' in doc:
-                for chunk in doc['chunks']:
+                for idx, chunk in enumerate(doc['chunks']):
                     all_chunks.append({
                         'text': chunk.get('text', ''),
                         'embedding': chunk.get('embedding', []),
                         'filename': doc.get('filename', 'Unknown'),
-                        'document_id': doc.get('document_id', 'Unknown')
+                        'document_id': doc.get('document_id', 'Unknown'),
+                        'chunk_index': idx
                     })
 
         print(f"📦 Total chunks collected: {len(all_chunks)}")
@@ -74,28 +75,28 @@ def get_similar_chunks(query, document_ids, top_k=3):
         # Sort all chunks by similarity (highest first)
         similarities.sort(key=lambda x: x[0], reverse=True)
 
-        # Filter: First try to get only chunks that pass the threshold
+        # First take only chunks that clear the threshold, capped at top_k
         top_chunks = [(sim, chunk) for sim, chunk in similarities if sim > similarity_threshold]
-        
+
         print(f"✅ Chunks passing threshold ({similarity_threshold}): {len(top_chunks)}")
 
-        # Limit to top K
         top_chunks = top_chunks[:top_k]
 
-        # 🔧 UPDATED FALLBACK: If strict filtering returns nothing, force return the top results
-        if not top_chunks and len(similarities) > 0:
-            print("⚠️ No chunks met the threshold. Returning top 3 matches anyway to avoid empty response.")
-            top_chunks = similarities[:top_k]
+        # No below-threshold fallback: if nothing clears the relevance bar we
+        # return nothing, so the caller can honestly refuse rather than answer
+        # from weakly-related context. This is the anti-hallucination guard.
+        if not top_chunks:
+            print("⚠️ No chunks cleared the relevance threshold; returning no context.")
+            return []
 
-        # Log selected chunk similarities
         for i, (sim, chunk) in enumerate(top_chunks):
             print(f"{i+1}. Similarity: {sim:.3f} - Text preview: {chunk['text'][:50]}...")
 
-        # Return results in expected format
         results = [{
             'chunk': chunk['text'],
             'filename': chunk['filename'],
             'document_id': chunk['document_id'],
+            'chunk_index': chunk['chunk_index'],
             'similarity': float(sim)
         } for sim, chunk in top_chunks]
 
@@ -204,16 +205,18 @@ Please provide a comprehensive answer based on the document:"""
             
             if answer:
                 print("✅ Groq API RAG generation successful")
-                if with_trace:
-                    sources = ", ".join([r["filename"] for r in results])
-                    return {
-                        "answer": answer,
-                        "sources": sources
-                    }
-                else:
-                    return {
-                        "answer": answer
-                    }
+                # Always attach structured citations (filename + chunk + score)
+                # so the UI can show exactly where each answer was grounded.
+                sources = [{
+                    "filename": r["filename"],
+                    "chunk_index": r.get("chunk_index"),
+                    "similarity": round(float(r.get("similarity", 0.0)), 3),
+                    "preview": r["chunk"][:160].strip() + ("…" if len(r["chunk"]) > 160 else "")
+                } for r in results]
+                return {
+                    "answer": answer,
+                    "sources": sources
+                }
             else:
                 print(f"❌ Groq API generation failed, using simple fallback...")
                 from utils.simple_rag import handle_simple_rag_query

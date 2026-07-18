@@ -67,10 +67,11 @@ const Chatbot = ({ documentNames, documentIds, onBackToUpload }) => {
       console.log('📄 Reply field:', response.data.reply);
       const botReply = response.data.answer || response.data.reply || "I'm processing your request. Could you please try rephrasing your question?";
       console.log('💬 Bot reply:', botReply);
-      setMessages((prev) => [...prev, { 
-        sender: 'bot', 
-        text: botReply, 
-        timestamp: new Date() 
+      setMessages((prev) => [...prev, {
+        sender: 'bot',
+        text: botReply,
+        sources: response.data.sources,
+        timestamp: new Date()
       }]);
     } catch (error) {
       console.error('Error sending message:', error);
@@ -302,6 +303,33 @@ const Chatbot = ({ documentNames, documentIds, onBackToUpload }) => {
     return timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
+  // Render grounding citations. Backend sends an array of {filename, chunk_index,
+  // similarity, preview} objects; older/fallback paths may send plain strings.
+  const renderSources = (sources) => {
+    const items = Array.isArray(sources) ? sources : [sources];
+    if (items.length === 0) return null;
+    return (
+      <div className="message-sources">
+        <div className="sources-label">Sources</div>
+        <ul className="sources-list">
+          {items.map((s, i) => {
+            if (typeof s === 'string') {
+              return <li key={i} className="source-item"><span className="source-file">{s}</span></li>;
+            }
+            return (
+              <li key={i} className="source-item">
+                <span className="source-file">{s.filename}</span>
+                {typeof s.chunk_index === 'number' && <span className="source-meta"> · chunk #{s.chunk_index}</span>}
+                {typeof s.similarity === 'number' && <span className="source-meta"> · {Math.round(s.similarity * 100)}% match</span>}
+                {s.preview && <div className="source-preview">“{s.preview}”</div>}
+              </li>
+            );
+          })}
+        </ul>
+      </div>
+    );
+  };
+
   return (
     <div className="chatbot-page">
       {/* Header */}
@@ -407,6 +435,7 @@ const Chatbot = ({ documentNames, documentIds, onBackToUpload }) => {
                     <div className="message-content">
                       {msg.sender === 'bot' ? formatSummaryText(msg.text) : msg.text}
                     </div>
+                    {msg.sender === 'bot' && msg.sources && msg.sources.length > 0 && renderSources(msg.sources)}
                     <div className="message-time">
                       {formatTime(msg.timestamp)}
                     </div>

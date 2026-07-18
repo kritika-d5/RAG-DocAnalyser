@@ -19,8 +19,8 @@ research notes, regulatory circulars, contracts), where answers must come
 - **Chunk & embed** — recursive character chunking; each chunk embedded locally
   with `all-MiniLM-L6-v2` (384-dim).
 - **Retrieve** — cosine-similarity search over chunk embeddings with a
-  query-length-aware threshold and a guaranteed-non-empty fallback, so the
-  model always gets the most relevant context.
+  query-length-aware threshold. If nothing clears the bar, retrieval returns no
+  context so the model refuses rather than answering from unrelated text.
 - **Generate** — Groq (`llama-3.1-8b-instant`) answers *grounded strictly in the
   retrieved chunks*, and is instructed to say when the document doesn't contain
   the answer (reduces hallucination).
@@ -58,9 +58,10 @@ research notes, regulatory circulars, contracts), where answers must come
 - **Grounded generation.** The LLM is constrained to the retrieved context and
   told to refuse when the answer isn't present — the anti-hallucination guard
   that matters most for document Q&A.
-- **Graceful degradation.** If strict thresholding returns nothing, the
-  retriever falls back to the top chunks so the user still gets a best-effort
-  answer rather than a dead end.
+- **Honest refusal.** If no chunk clears the similarity threshold, the retriever
+  returns nothing and the app says the answer isn't in the document, rather than
+  fabricating one from weakly-related text. Answers that do ground out come back
+  with citations (filename, chunk index, and match score) shown in the UI.
 
 ---
 

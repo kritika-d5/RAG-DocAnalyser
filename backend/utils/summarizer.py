@@ -6,9 +6,14 @@ from .groq_api import groq_summarize_generate, test_groq_connection
 
 load_dotenv()
 
-client = MongoClient(os.getenv("MONGO_URI"))
-db = client["documents"]
-collection = db["mangobytes"]
+# MongoDB setup using env vars (must match the rest of the app)
+MONGO_URI = os.getenv("MONGO_URI")
+DATABASE_NAME = os.getenv("DATABASE_NAME")
+COLLECTION_NAME = os.getenv("COLLECTION_NAME")
+
+client = MongoClient(MONGO_URI)
+db = client[DATABASE_NAME]
+collection = db[COLLECTION_NAME]
 
 def summarize_documents(user_query, document_ids):
     try:
@@ -119,39 +124,6 @@ Documents to analyze:
 {docs_content}
 
 Please provide a comprehensive analysis that synthesizes information from all {len(documents_data)} documents."""
-        prompt = f"""You are an expert document summarizer. Create a comprehensive, well-formatted summary with the following structure:
-
-# 📋 DOCUMENT SUMMARY
-
-## 📊 OVERALL SUMMARY
-[Write a concise 5-10 sentence summary of the main content and purpose of the document]
-
-## 📝 SECTION-WISE BREAKDOWN
-[For each major section, provide:
-- **Section Title**: [Section name]
-- **Key Points**: [2-3 bullet points with key information]
-- **Important Details**: [Highlight any critical data, findings, or conclusions]]
-
-## 🔍 KEY FINDINGS & HIGHLIGHTS
-[Extract and highlight 5-7 most important findings, including:
-- **Research Findings**: [Any research results or discoveries]
-- **Methodologies**: [Key methods or approaches mentioned]
-- **Conclusions**: [Main conclusions or recommendations]
-- **Critical Data**: [Important statistics, numbers, or metrics]]
-
-## 🎯 MAIN TOPICS & THEMES
-[List the primary topics, themes, and subject areas covered in the document]
-
-## 💡 RECOMMENDATIONS & INSIGHTS
-[Any recommendations, suggestions, or insights provided in the document]
-
-Document content:
-{combined_text[:3000]}  # Limit to first 3000 chars to avoid timeouts
-
-Important chunks:
-{chunks_text}
-
-Please format the response with clear headings, bullet points, and highlight key elements using **bold** text for emphasis."""
 
         try:
             print("🚀 Starting Groq API summarization...")
@@ -249,36 +221,6 @@ def generate_enhanced_fallback_summary(text, document_ids):
 
 ---
 *This is an enhanced summary generated when the AI model was unavailable.*"""
-        
-        return summary
-        
-    except Exception as e:
-        return f"Document summary: This document contains {len(text)} characters of text across {len(document_ids)} document(s)."
-
-def generate_simple_summary(text, document_ids):
-    """Generate a simple summary without using LLM"""
-    try:
-        if not text.strip():
-            return "No document content found to summarize."
-        
-        # Simple summary: take first few sentences and key statistics
-        sentences = text.split('.')
-        first_sentences = '. '.join(sentences[:3]) + '.'
-        
-        # Count words and characters
-        word_count = len(text.split())
-        char_count = len(text)
-        
-        summary = f"""Document Summary:
-
-Key Information:
-- Document length: {word_count} words, {char_count} characters
-- Number of documents: {len(document_ids)}
-
-Main content preview:
-{first_sentences}
-
-This is a basic summary generated from the document content."""
         
         return summary
         
