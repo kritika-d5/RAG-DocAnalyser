@@ -68,7 +68,8 @@ def groq_generate(prompt, max_tokens=600, temperature=0.3, timeout=90, max_retri
                 # the frontend's markdown renderer shows raw HTML as text.
                 generated_text = re.sub(r'\s*<br\s*/?>\s*', ' ', generated_text)
                 # Normalise typographic spaces/hyphens (narrow no-break space
-                # renders as no space at all in the UI font).
+                # renders as no space at all in the UI font). "27 %" -> "27%".
+                generated_text = re.sub(r'(\d)[\u00A0\u202F\u2009 ]%', r'\1%', generated_text)
                 generated_text = re.sub(r'[\u00A0\u202F\u2009]', ' ', generated_text)
                 generated_text = re.sub(r'[\u2010\u2011]', '-', generated_text)
                 print(f"✅ Groq API call successful")

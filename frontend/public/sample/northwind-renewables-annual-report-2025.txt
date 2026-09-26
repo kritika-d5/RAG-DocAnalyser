@@ -1,0 +1,80 @@
+NORTHWIND RENEWABLES LTD. — ANNUAL REPORT 2025
+(Fictional sample document for the DocAnalyser demo. All names and figures are invented.)
+
+
+1. LETTER FROM THE CEO
+
+2025 was the year Northwind Renewables moved from a regional solar developer to a national clean-energy company. We connected 1.4 gigawatts (GW) of new capacity to the grid, more than in the previous three years combined, and ended the year with 3.9 GW in operation across 11 states.
+
+Revenue rose 27% to $1.86 billion, and for the first time every business segment was profitable. I am proud of the team, and grateful to our customers and investors for their patience during the supply-chain disruptions of 2023 and 2024.
+
+We also made mistakes. Our Delta Valley storage project finished nine months late and 18% over budget, and we have changed how we manage large construction contracts as a result (see Section 6).
+
+— Priya Raman, Chief Executive Officer (appointed March 2022)
+
+
+2. FINANCIAL HIGHLIGHTS
+
+- Revenue: $1.86 billion (2024: $1.46 billion), up 27%.
+- Operating profit: $312 million (2024: $201 million). Operating margin improved from 13.8% to 16.8%.
+- Net profit: $204 million (2024: $118 million).
+- Free cash flow: $96 million, the first positive year since the company listed in 2019.
+- Net debt: $2.1 billion, equal to 3.4 times EBITDA (2024: 4.1 times).
+- Dividend: 12 cents per share, reinstated after a two-year pause.
+
+Revenue by segment:
+- Utility-scale solar: $1.02 billion (55% of total), up 22%.
+- Battery storage: $468 million (25%), up 61%, the fastest-growing segment.
+- Commercial rooftop solar: $294 million (16%), up 9%.
+- Operations & maintenance services: $78 million (4%), up 4%.
+
+
+3. OPERATIONS
+
+Capacity in operation reached 3.9 GW at 31 December 2025, up from 2.5 GW a year earlier. Average plant availability was 98.2%, slightly above our 98% target.
+
+Major projects completed in 2025:
+- Red Mesa Solar (Arizona): 620 megawatts (MW), completed in May, on time and 4% under budget.
+- Delta Valley Storage (California): 400 MW / 1,600 MWh battery, completed in October, nine months late.
+- Great Plains Hybrid (Kansas): 380 MW solar paired with 150 MW of storage, completed in December.
+
+The development pipeline stands at 14.5 GW, of which 3.2 GW has signed power purchase agreements (PPAs). The average PPA term on new contracts is 17 years.
+
+
+4. PEOPLE AND SAFETY
+
+Headcount grew from 2,150 to 2,730 employees. Women now hold 34% of management roles, up from 29%.
+
+The lost-time injury rate fell to 0.21 per 200,000 hours worked (2024: 0.35). Sadly, a subcontractor was seriously injured at the Great Plains site in August; an independent review led to new rules on working at height across all sites.
+
+
+5. SUSTAINABILITY
+
+Our operating plants generated 8.7 terawatt-hours (TWh) of electricity in 2025, enough to power roughly 800,000 homes and avoiding an estimated 4.9 million tonnes of CO2.
+
+We committed to sourcing 50% of solar panels from suppliers with audited, traceable supply chains by 2027. At the end of 2025 the figure was 31%.
+
+
+6. RISKS
+
+- Supplier concentration: three manufacturers supply 72% of our solar panels. A disruption at any one of them could delay projects by six months or more.
+- Interest rates: every 1 percentage point rise in interest rates increases annual financing costs by about $19 million.
+- Grid connection delays: the average wait for a new grid connection rose to 38 months in 2025, from 31 months in 2023.
+- Construction cost overruns: following Delta Valley, all contracts above $200 million now require fixed-price terms and a monthly independent cost review.
+- Policy change: 21% of 2025 revenue benefited from federal tax credits that are scheduled for review in 2027.
+
+
+7. OUTLOOK FOR 2026
+
+Management expects:
+- Revenue of $2.15 to $2.25 billion (growth of 16% to 21%).
+- 1.6 to 1.9 GW of new capacity connected to the grid.
+- Operating margin of 17% to 18%.
+- Net debt below 3.0 times EBITDA by the end of 2026.
+
+Two new battery storage projects in Texas, totalling 900 MW, are scheduled to start construction in the second quarter of 2026. The company also plans to enter the offshore wind market through a joint venture, with a final decision expected in late 2026.
+
+
+8. BOARD CHANGES
+
+Dr. Samuel Okafor will retire as Chair at the annual general meeting on 14 May 2026, after nine years on the board. The board has nominated Helen Marsh, currently Senior Independent Director, to succeed him.

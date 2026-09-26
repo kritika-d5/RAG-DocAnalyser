@@ -1,5 +1,5 @@
 // src/App.jsx
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import FileUploader from './components/FileUploader';
 import Chatbot from './components/Chatbot';
 import DocumentSummary from './components/DocumentSummary';
@@ -60,8 +60,8 @@ function App() {
   };
 
   // Extract document IDs and names for the summary component
-  const documentIds = uploadedDocuments.map(doc => doc.id);
-  const documentNames = uploadedDocuments.map(doc => doc.name);
+  const documentIds = useMemo(() => uploadedDocuments.map(doc => doc.id), [uploadedDocuments]);
+  const documentNames = useMemo(() => uploadedDocuments.map(doc => doc.name), [uploadedDocuments]);
 
   return (
     <div className="App">

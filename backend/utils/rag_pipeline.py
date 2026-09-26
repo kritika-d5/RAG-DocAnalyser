@@ -1,8 +1,10 @@
 from pymongo import MongoClient
 from dotenv import load_dotenv
 import os
+import re
 import numpy as np
 from .groq_api import groq_generate
+from .prompts import rag_prompt
 from .embeddings import embed_texts
 
 load_dotenv()
@@ -16,7 +18,45 @@ client = MongoClient(MONGO_URI)
 db = client[DATABASE_NAME]
 collection = db[COLLECTION_NAME]
 
-def get_similar_chunks(query, document_ids, top_k=3):
+# Words that carry no topic on their own, ignored by the keyword match below
+_STOPWORDS = set("""
+a an the and or but of in on at to for from by with about as into over than
+is are was were be been being am do does did done has have had can could will
+would should may might must shall this that these those it its there their they
+them he she his her we our you your i me my what which who whom whose when where
+why how whether tell give show list explain describe please document documents
+doc file text say says said main key important any some all much many more most
+""".split())
+
+
+def _terms(text):
+    """Lower-cased content words, with a light plural strip ("risks" -> "risk")."""
+    words = re.findall(r"[a-z0-9]+", text.lower())
+    out = set()
+    for w in words:
+        if len(w) < 3 or w in _STOPWORDS:
+            continue
+        if len(w) > 3 and w.endswith("s") and not w.endswith("ss"):
+            w = w[:-1]
+        out.add(w)
+    return out
+
+
+def _keyword_match(query_terms, chunk_text):
+    """
+    (fraction of the query's content words found in the chunk, whether that
+    counts as a match). A match needs at least half the words AND at least two
+    of them when the query has two or more, so one generic word shared with
+    the document ("capital" in "capital of France") isn't enough.
+    """
+    if not query_terms:
+        return 0.0, False
+    matched = len(query_terms & _terms(chunk_text))
+    overlap = matched / len(query_terms)
+    return overlap, overlap >= 0.5 and matched >= min(2, len(query_terms))
+
+
+def get_similar_chunks(query, document_ids, top_k=4):
     try:
         print(f"🔎 Searching for documents: {document_ids}")
         query_embedding = embed_texts(query)
@@ -54,38 +94,40 @@ def get_similar_chunks(query, document_ids, top_k=3):
 
         print(f"📦 Total chunks collected: {len(all_chunks)}")
 
-        # Calculate cosine similarity manually
-        similarities = []
+        # Hybrid relevance: semantic similarity from the embeddings, plus a
+        # keyword match. The small embedding model misses paraphrases ("grew
+        # fastest" vs "fastest-growing") and exact names ("Delta Valley"), so a
+        # chunk also qualifies if it contains most of the question's key words.
         query_emb = np.array(query_embedding)
+        query_terms = _terms(query)
+        scored = []
 
         for chunk in all_chunks:
-            if chunk['embedding']:
-                try:
-                    chunk_emb = np.array(chunk['embedding'])
-                    # Calculate cosine similarity
-                    sim = np.dot(chunk_emb, query_emb) / (np.linalg.norm(chunk_emb) * np.linalg.norm(query_emb))
-                    
-                    # Store all valid similarities
-                    similarities.append((sim, chunk))
-                except Exception as e:
-                    print(f"⚠️ Error calculating similarity: {e}")
-                    continue
+            if not chunk['embedding']:
+                continue
+            try:
+                chunk_emb = np.array(chunk['embedding'])
+                sim = float(np.dot(chunk_emb, query_emb) / (np.linalg.norm(chunk_emb) * np.linalg.norm(query_emb)))
+            except Exception as e:
+                print(f"⚠️ Error calculating similarity: {e}")
+                continue
+            overlap, keyword_hit = _keyword_match(query_terms, chunk['text'])
+            scored.append((sim + 0.3 * overlap, sim, keyword_hit, chunk))
 
-        # Sort all chunks by similarity (highest first)
-        similarities.sort(key=lambda x: x[0], reverse=True)
+        scored.sort(key=lambda x: x[0], reverse=True)
 
-        # First take only chunks that clear the threshold, capped at top_k
-        top_chunks = [(sim, chunk) for sim, chunk in similarities if sim > similarity_threshold]
+        # Anti-hallucination guard: a chunk must clear the semantic bar OR match
+        # the question's key words (see _keyword_match). If nothing qualifies we
+        # return no context, so the caller refuses instead of guessing.
+        top_chunks = [
+            (sim, chunk) for _, sim, keyword_hit, chunk in scored
+            if sim > similarity_threshold or keyword_hit
+        ][:top_k]
 
-        print(f"✅ Chunks passing threshold ({similarity_threshold}): {len(top_chunks)}")
+        print(f"✅ Relevant chunks (semantic > {similarity_threshold} or keyword match): {len(top_chunks)}")
 
-        top_chunks = top_chunks[:top_k]
-
-        # No below-threshold fallback: if nothing clears the relevance bar we
-        # return nothing, so the caller can honestly refuse rather than answer
-        # from weakly-related context. This is the anti-hallucination guard.
         if not top_chunks:
-            print("⚠️ No chunks cleared the relevance threshold; returning no context.")
+            print("⚠️ No chunks cleared the relevance bar; returning no context.")
             return []
 
         for i, (sim, chunk) in enumerate(top_chunks):
@@ -136,7 +178,7 @@ def handle_rag_query(user_query, document_ids, with_trace=False):
         
         if not results:
             return {
-                "answer": f"I couldn't find any relevant information in the uploaded documents to answer: '{user_query}'. Please try rephrasing your question or ask about a different topic."
+                "answer": "I couldn't find anything about that in your document. Try rephrasing, or ask about a topic the document covers."
             }
         
         # Group chunks by document for better context
@@ -165,38 +207,7 @@ def handle_rag_query(user_query, document_ids, with_trace=False):
         
         context = "\n\n".join(context_parts)
 
-        # Enhanced prompt for multi-document analysis
-        if len(chunks_by_doc) > 1:
-            prompt = f"""You are an expert multi-document analyst. You are comparing {len(chunks_by_doc)} documents.
-
-IMPORTANT INSTRUCTIONS:
-- Analyze and compare information from ALL documents
-- Highlight similarities, differences, and contradictions between documents
-- Provide comprehensive answers that synthesize information across documents
-- Explicitly mention which document(s) your information comes from
-- If the context doesn't contain information to answer the question, say "The provided context doesn't contain information to answer this question."
-- For comparisons, structure your response to clearly show differences and similarities
-
-Context from multiple documents:
-{context}
-
-User Question: {user_query}
-
-Please provide a comprehensive analysis that compares and synthesizes information from all relevant documents:"""
-        else:
-            prompt = f"""You are an expert document analyst. Answer the user's question based ONLY on the context provided below.
-
-IMPORTANT INSTRUCTIONS:
-- Analyze information from the provided document
-- Provide comprehensive answers based on the context
-- If the context doesn't contain information to answer the question, say "The provided context doesn't contain information to answer this question."
-
-Context from document:
-{context}
-
-User Question: {user_query}
-
-Please provide a comprehensive answer based on the document:"""
+        prompt = rag_prompt(context, user_query, multi_document=len(chunks_by_doc) > 1)
 
         # Structured citations (filename + chunk + score) so the UI can show
         # exactly where each answer was grounded.
@@ -204,7 +215,9 @@ Please provide a comprehensive answer based on the document:"""
             "filename": r["filename"],
             "chunk_index": r.get("chunk_index"),
             "similarity": round(float(r.get("similarity", 0.0)), 3),
-            "preview": r["chunk"][:160].strip() + ("…" if len(r["chunk"]) > 160 else "")
+            "preview": r["chunk"][:160].strip() + ("…" if len(r["chunk"]) > 160 else ""),
+            # Full passage so the UI can expand a citation to the exact text
+            "text": r["chunk"].strip()
         } for r in results]
 
         print("🚀 Starting Groq API RAG generation...")
