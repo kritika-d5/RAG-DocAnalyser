@@ -10,7 +10,15 @@ load_dotenv()
 # Groq API configuration
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
-MODEL_NAME = "llama-3.1-8b-instant"
+# Configurable so a model retirement on Groq's side is a config change, not a
+# code change (llama-3.1-8b-instant was retired and broke every LLM call).
+MODEL_NAME = os.getenv("GROQ_MODEL", "openai/gpt-oss-20b")
+
+# gpt-oss / qwen3 are reasoning models: hidden reasoning tokens count against
+# max_tokens, so small budgets (e.g. 10 for intent detection) would return an
+# empty answer. Pad every request with headroom for the reasoning pass.
+REASONING_HEADROOM = int(os.getenv("GROQ_REASONING_HEADROOM", "1024"))
+_IS_REASONING_MODEL = MODEL_NAME.startswith(("openai/gpt-oss", "qwen/qwen3"))
 
 def groq_generate(prompt, max_tokens=600, temperature=0.3, timeout=90, max_retries=5, base_delay=2):
     """
@@ -37,7 +45,11 @@ def groq_generate(prompt, max_tokens=600, temperature=0.3, timeout=90, max_retri
         "top_p": 0.9,
         "stream": False
     }
-    
+    if _IS_REASONING_MODEL:
+        data["max_tokens"] = max_tokens + REASONING_HEADROOM
+        data["reasoning_effort"] = "low"
+        data["include_reasoning"] = False
+
     print(f"🚀 Calling Groq API with model: {MODEL_NAME}")
 
     for attempt in range(max_retries):
@@ -52,6 +64,13 @@ def groq_generate(prompt, max_tokens=600, temperature=0.3, timeout=90, max_retri
             if response.status_code == 200:
                 result = response.json()
                 generated_text = result['choices'][0]['message']['content']
+                # Models use <br> for line breaks inside markdown table cells;
+                # the frontend's markdown renderer shows raw HTML as text.
+                generated_text = re.sub(r'\s*<br\s*/?>\s*', ' ', generated_text)
+                # Normalise typographic spaces/hyphens (narrow no-break space
+                # renders as no space at all in the UI font).
+                generated_text = re.sub(r'[\u00A0\u202F\u2009]', ' ', generated_text)
+                generated_text = re.sub(r'[\u2010\u2011]', '-', generated_text)
                 print(f"✅ Groq API call successful")
                 return generated_text
 

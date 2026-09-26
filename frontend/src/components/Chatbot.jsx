@@ -2,9 +2,10 @@
 import React, { useState, useRef, useEffect } from 'react';
 import axios from 'axios';
 import jsPDF from 'jspdf';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import DocumentSummary from './DocumentSummary';
 import './Chatbot.css';
-import './Summary.css';
 
 const Chatbot = ({ documentNames, documentIds, onBackToUpload }) => {
   console.log('🤖 Chatbot initialized with:', { documentNames, documentIds });
@@ -26,9 +27,10 @@ const Chatbot = ({ documentNames, documentIds, onBackToUpload }) => {
     "List the main topics"
   ];
 
-  // Auto-scroll to bottom when new messages arrive
+  // Auto-scroll to bottom when new messages arrive (not on the empty state,
+  // where it would scroll the welcome content out of view on mount)
   useEffect(() => {
-    if (chatboxRef.current) {
+    if (messages.length > 0 && chatboxRef.current) {
       chatboxRef.current.scrollTop = chatboxRef.current.scrollHeight;
     }
   }, [messages]);
@@ -117,7 +119,12 @@ const Chatbot = ({ documentNames, documentIds, onBackToUpload }) => {
       .replace(/\*\*(.+?)\*\*/g, '$1')     // **bold**
       .replace(/\*(.+?)\*/g, '$1')         // *italic*
       .replace(/^[-*+]\s+/gm, '  - ')      // bullet markers
-      .replace(/[^\x00-\x7F]/g, '')        // strip all non-ASCII (emojis, special chars)
+      .replace(/[\u2018\u2019]/g, "'")     // smart quotes -> ASCII
+      .replace(/[\u201C\u201D]/g, '"')
+      .replace(/[\u2010-\u2015]/g, '-')    // hyphens / dashes
+      .replace(/[\u00A0\u202F]/g, ' ')     // no-break spaces
+      .replace(/\u2022/g, '-')             // bullets
+      .replace(/[^\n\t -~]/g, '')          // drop remaining non-ASCII (emojis)
       .replace(/\n{3,}/g, '\n\n')          // collapse excess newlines
       .trim();
   };
@@ -274,30 +281,13 @@ const Chatbot = ({ documentNames, documentIds, onBackToUpload }) => {
     }
   };
 
-  const formatSummaryText = (text) => {
-    // Check if this looks like a summary (has markdown headers)
-    if (text.includes('# 📋') || text.includes('## 📊') || text.includes('## 📝')) {
-      return (
-        <div className="summary-container">
-          <div dangerouslySetInnerHTML={{ 
-            __html: text
-              .replace(/# 📋 DOCUMENT SUMMARY/g, '<h1 class="summary-title">📋 DOCUMENT SUMMARY</h1>')
-              .replace(/## 📊 OVERALL SUMMARY/g, '<h2 class="summary-section-title">📊 OVERALL SUMMARY</h2>')
-              .replace(/## 📝 SECTION-WISE BREAKDOWN/g, '<h2 class="summary-section-title">📝 SECTION-WISE BREAKDOWN</h2>')
-              .replace(/## 🔍 KEY FINDINGS & HIGHLIGHTS/g, '<h2 class="summary-section-title">🔍 KEY FINDINGS & HIGHLIGHTS</h2>')
-              .replace(/## 🎯 MAIN TOPICS & THEMES/g, '<h2 class="summary-section-title">🎯 MAIN TOPICS & THEMES</h2>')
-              .replace(/## 💡 RECOMMENDATIONS & INSIGHTS/g, '<h2 class="summary-section-title">💡 RECOMMENDATIONS & INSIGHTS</h2>')
-              .replace(/## 📈 KEY STATISTICS/g, '<h2 class="summary-section-title">📈 KEY STATISTICS</h2>')
-              .replace(/\*\*(.*?)\*\*/g, '<span class="summary-bold">$1</span>')
-              .replace(/\n• /g, '<div class="summary-bullet">')
-              .replace(/\n\n/g, '</div><div class="summary-bullet">')
-              .replace(/\n### \*\*(.*?)\*\*/g, '<h3 class="summary-subsection">$1</h3>')
-          }} />
-        </div>
-      );
-    }
-    return text;
-  };
+  // Render bot answers as proper markdown (headings, bold, lists, tables)
+  // instead of leaking raw ** and # syntax into the chat.
+  const renderBotText = (text) => (
+    <div className="markdown-body">
+      <ReactMarkdown remarkPlugins={[remarkGfm]}>{text}</ReactMarkdown>
+    </div>
+  );
 
   const formatTime = (timestamp) => {
     return timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -388,7 +378,7 @@ const Chatbot = ({ documentNames, documentIds, onBackToUpload }) => {
         {documentNames && documentNames.length > 0 && (
           <div className="document-info">
             {documentNames.length === 1 ? (
-              documentNames[0]
+              <>📚 {documentNames[0]}</>
             ) : (
               <div className="multiple-docs">
                 <span>📚 {documentNames.length} Documents</span>
@@ -433,7 +423,7 @@ const Chatbot = ({ documentNames, documentIds, onBackToUpload }) => {
                 {messages.map((msg, idx) => (
                   <div key={idx} className={`message ${msg.sender}`}>
                     <div className="message-content">
-                      {msg.sender === 'bot' ? formatSummaryText(msg.text) : msg.text}
+                      {msg.sender === 'bot' ? renderBotText(msg.text) : msg.text}
                     </div>
                     {msg.sender === 'bot' && msg.sources && msg.sources.length > 0 && renderSources(msg.sources)}
                     <div className="message-time">

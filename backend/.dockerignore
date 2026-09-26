@@ -9,3 +9,5 @@ multilingual_app.log
 .git
 .gitignore
 .dockerignore
+.venv/
+*.log

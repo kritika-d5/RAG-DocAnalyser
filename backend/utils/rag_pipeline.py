@@ -1,9 +1,8 @@
 from pymongo import MongoClient
 from dotenv import load_dotenv
 import os
-import requests
 import numpy as np
-from .groq_api import groq_generate, test_groq_connection
+from .groq_api import groq_generate
 from .embeddings import embed_texts
 
 load_dotenv()
@@ -199,34 +198,30 @@ User Question: {user_query}
 
 Please provide a comprehensive answer based on the document:"""
 
-        try:
-            print("🚀 Starting Groq API RAG generation...")
-            answer = groq_generate(prompt, max_tokens=300, temperature=0.3, timeout=90)
-            
-            if answer:
-                print("✅ Groq API RAG generation successful")
-                # Always attach structured citations (filename + chunk + score)
-                # so the UI can show exactly where each answer was grounded.
-                sources = [{
-                    "filename": r["filename"],
-                    "chunk_index": r.get("chunk_index"),
-                    "similarity": round(float(r.get("similarity", 0.0)), 3),
-                    "preview": r["chunk"][:160].strip() + ("…" if len(r["chunk"]) > 160 else "")
-                } for r in results]
-                return {
-                    "answer": answer,
-                    "sources": sources
-                }
-            else:
-                print(f"❌ Groq API generation failed, using simple fallback...")
-                from utils.simple_rag import handle_simple_rag_query
-                return handle_simple_rag_query(user_query, document_ids)
-                
-        except Exception as e:
-            print(f"❌ Groq API error: {str(e)}, using simple fallback...")
-            from utils.simple_rag import handle_simple_rag_query
-            return handle_simple_rag_query(user_query, document_ids)
-            
+        # Structured citations (filename + chunk + score) so the UI can show
+        # exactly where each answer was grounded.
+        sources = [{
+            "filename": r["filename"],
+            "chunk_index": r.get("chunk_index"),
+            "similarity": round(float(r.get("similarity", 0.0)), 3),
+            "preview": r["chunk"][:160].strip() + ("…" if len(r["chunk"]) > 160 else "")
+        } for r in results]
+
+        print("🚀 Starting Groq API RAG generation...")
+        answer = groq_generate(prompt, max_tokens=500, temperature=0.3, timeout=90)
+
+        if not answer:
+            # LLM unavailable: fall back to the best-matching passage, which is
+            # already scoped to this user's documents, and say so honestly.
+            print("❌ Groq API generation failed, returning top passage instead")
+            answer = (
+                "_The AI service is temporarily unavailable, so here is the most "
+                f"relevant passage from **{results[0]['filename']}**:_\n\n"
+                f"> {results[0]['chunk'].strip()}"
+            )
+
+        return {"answer": answer, "sources": sources}
+
     except Exception as e:
         print(f"RAG query error: {str(e)}")
         return {

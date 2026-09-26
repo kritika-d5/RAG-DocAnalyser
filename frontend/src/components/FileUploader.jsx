@@ -319,9 +319,11 @@ const FileUploader = ({ onUploadSuccess }) => {
                 disabled={selectedFiles.length === 0 || isUploading}
               >
                 {isUploading && <span className="loading-spinner"></span>}
-                {isUploading 
-                  ? 'Processing Documents...' 
-                  : `Upload ${selectedFiles.length} File${selectedFiles.length !== 1 ? 's' : ''} & Start Chatting`}
+                {isUploading
+                  ? 'Processing Documents...'
+                  : selectedFiles.length === 0
+                    ? 'Upload & Start Chatting'
+                    : `Upload ${selectedFiles.length} File${selectedFiles.length !== 1 ? 's' : ''} & Start Chatting`}
               </button>
 
               {selectedFiles.length > 0 && !isUploading && (
